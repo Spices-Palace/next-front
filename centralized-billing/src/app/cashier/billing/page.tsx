@@ -1,13 +1,8 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { useGetProductsQuery, useGetSalesmenQuery } from '../../../store/api';
-import type { RootState, AppDispatch } from "../../../store/store";
 import type { Product } from "../../../store/productsSlice";
 import Cookies from 'js-cookie';
-
-const SALESMEN_API_URL = process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL + '/v1/salesmen'
-  : 'http://localhost:4000/v1/salesmen';
 
 const BILLS_API_URL = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL + '/v1/bills'
@@ -43,7 +38,7 @@ function calculateTaxes(productType: string, amount: number) {
 }
 
 // Function to calculate total taxes for all items
-function calculateTotalTaxes(items: any[]) {
+function calculateTotalTaxes(items: BillingItem[]) {
   let totalCGST = 0;
   let totalSGST = 0;
   

@@ -5,7 +5,7 @@ import { useGetSalesmenQuery } from '../../../store/api';
 import { Salesman } from '@/types/salesman';
 
 const SalesmenPage = () => {
-  const { data: salesmen = [], error, isLoading } = useGetSalesmenQuery();
+  const { data: salesmen = [], isLoading } = useGetSalesmenQuery();
   const [form, setForm] = useState({ name: '', phone: '', address: '', commissionRate: 0, companyId: '' });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -70,7 +70,7 @@ const SalesmenPage = () => {
       // await dispatch(fetchSalesmen()); // This line is removed as per new_code
       // setTimeout(() => setSuccess(''), 3000); // This line is removed as per new_code
       setModalOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMsg('Failed to save salesman.');
       console.error(err);
     }
@@ -87,7 +87,7 @@ const SalesmenPage = () => {
       setSuccess('Salesman deleted successfully!');
       setTimeout(() => setSuccess(''), 3000);
       closeModal();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMsg('Failed to delete salesman.');
       console.error(err);
     }

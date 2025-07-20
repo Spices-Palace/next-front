@@ -18,7 +18,7 @@ interface Buyer {
 }
 
 export default function BuyersPage() {
-  const { data: buyers = [], error, isLoading } = useGetBuyersQuery();
+  const { data: buyers = [], isLoading } = useGetBuyersQuery();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Buyer>({ name: '', address: '', bankDetails: [{ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' }] });
@@ -154,16 +154,16 @@ export default function BuyersPage() {
                 <td colSpan={4} className="text-center py-8 text-gray-400 text-lg">No buyers found.</td>
               </tr>
             ) : (
-              filteredBuyers.map(buyer => (
-                <tr key={buyer.id} className="border-t hover:bg-blue-50 transition">
-                  <td className="px-5 py-3 font-semibold text-gray-900 text-lg">{buyer.name}</td>
-                  <td className="px-5 py-3 text-gray-800 text-lg">{buyer.address}</td>
+              filteredBuyers.map((b: Buyer) => (
+                <tr key={b.id} className="border-t hover:bg-blue-50 transition">
+                  <td className="px-5 py-3 font-semibold text-gray-900 text-lg">{b.name}</td>
+                  <td className="px-5 py-3 text-gray-800 text-lg">{b.address}</td>
                   <td className="px-5 py-3 text-gray-800 text-base">
                     <ul className="list-disc ml-4">
-                      {buyer.bankDetails.map((b, i) => (
-                        <li key={i} className="mb-2">
-                          <span className="font-semibold">{b.bankName}</span> - {b.accountNumber} <br/>
-                          <span className="text-xs">IFSC: {b.ifscCode}, Holder: {b.accountHolderName}</span>
+                      {b.bankDetails.map((bankDetail: BankDetail, bankIdx: number) => (
+                        <li key={bankIdx} className="mb-2">
+                          <span className="font-semibold">{bankDetail.bankName}</span> - {bankDetail.accountNumber} <br/>
+                          <span className="text-xs">IFSC: {bankDetail.ifscCode}, Holder: {bankDetail.accountHolderName}</span>
                         </li>
                       ))}
                     </ul>
@@ -171,14 +171,14 @@ export default function BuyersPage() {
                   <td className="px-5 py-3">
                     <button
                       className="text-blue-600 hover:text-blue-800 font-bold mr-2 text-xl"
-                      onClick={() => openModal(buyer)}
+                      onClick={() => openModal(b)}
                       title="Edit"
                     >
                       <span className="material-icons">edit</span>
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 font-bold text-xl"
-                      onClick={() => handleDelete(buyer.id)}
+                      onClick={() => handleDelete(b.id)}
                       title="Delete"
                     >
                       <span className="material-icons">delete</span>

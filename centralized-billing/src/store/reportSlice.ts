@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import Cookies from 'js-cookie';
 
 export const fetchReportByDate = createAsyncThunk(
   'report/fetchByDate',

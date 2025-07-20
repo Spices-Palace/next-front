@@ -6,11 +6,6 @@ import Cookies from 'js-cookie';
 import { useGetProductsQuery, useGetBuyersQuery } from '../../../store/api';
 import BarcodePrintModal from '../../components/BarcodePrintModal';
 
-interface Buyer {
-  id: number;
-  name: string;
-}
-
 interface Product {
   id: number;
   name: string;
