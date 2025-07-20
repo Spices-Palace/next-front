@@ -2,12 +2,16 @@
 import React, { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useGetProductsQuery } from '../../../store/api';
+import Cookies from 'js-cookie';
 import type { AppDispatch } from "../../../store/store";
 import Barcode from "react-barcode";
 import BarcodePrintModal from '../../components/BarcodePrintModal';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 export default function CashierProductsPage() {
-  const { data: products = [] } = useGetProductsQuery();
+  const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
+  const companyId = rawCompanyId || '';
+  const { data: products = [] } = useGetProductsQuery(companyId ? { companyId } : skipToken);
   const dispatch: AppDispatch = useDispatch();
   const [search, setSearch] = React.useState("");
   const [printModalOpen, setPrintModalOpen] = React.useState(false);

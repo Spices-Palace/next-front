@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useGetProductsQuery, useGetSalesmenQuery } from '../../../store/api';
 import type { Product } from "../../../store/productsSlice";
 import Cookies from 'js-cookie';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 const BILLS_API_URL = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL + '/v1/bills'
@@ -107,8 +108,10 @@ function getBasePrice(productType: string, taxInclusivePrice: number) {
 }
 
 export default function CashierBillingPage() {
-  const { data: products = [] } = useGetProductsQuery();
-  const { data: salesmen = [] } = useGetSalesmenQuery();
+  const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
+  const companyId = rawCompanyId || '';
+  const { data: products = [] } = useGetProductsQuery(companyId ? { companyId } : skipToken);
+  const { data: salesmen = [] } = useGetSalesmenQuery(companyId ? { companyId } : skipToken);
   const [customer, setCustomer] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [items, setItems] = useState<BillingItem[]>([]);
@@ -164,7 +167,6 @@ export default function CashierBillingPage() {
   const today = new Date().toLocaleDateString();
   const companyName = typeof window !== 'undefined' ? (localStorage.getItem('companyName') || "COMPANY") : "COMPANY";
   const companyGstNo = typeof window !== 'undefined' ? (localStorage.getItem('companyGstNo') || '27AAAPL1234C1ZV') : '27AAAPL1234C1ZV'; // fallback GST number
-  const companyId = Cookies.get('companyId') || '';
 
   // Add product by barcode (scan or type)
   const handleBarcodeAdd = (e: React.FormEvent) => {

@@ -5,6 +5,7 @@ import Barcode from 'react-barcode';
 import Cookies from 'js-cookie';
 import { useGetProductsQuery, useGetBuyersQuery } from '../../../store/api';
 import BarcodePrintModal from '../../components/BarcodePrintModal';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 interface Product {
   id: number;
@@ -39,8 +40,10 @@ const PRODUCTS_API_URL = BASE_URL + '/v1/products';
 const BUYERS_API_URL = BASE_URL + '/v1/buyers';
 
 export default function ProductsPage() {
-  const { data: products = [] } = useGetProductsQuery();
-  const { data: buyers = [] } = useGetBuyersQuery();
+  const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
+  const companyId = rawCompanyId || '';
+  const { data: products = [] } = useGetProductsQuery(companyId ? { companyId } : skipToken);
+  const { data: buyers = [] } = useGetBuyersQuery(); // If buyers should be company-specific, update to useGetBuyersQuery({ companyId }, { skip: !companyId }) and update the API definition accordingly.
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<{ name: string; type: string; unit: string; cost: string; price: string; quantity: string; buyerId: string; companyId: string; barcode: string }>(

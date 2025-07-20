@@ -47,8 +47,8 @@ export const api = createApi({
   }),
   tagTypes: ['Product', 'Report', 'Bill', 'Salesman', 'Buyer'],
   endpoints: (builder) => ({
-    getProducts: builder.query<Product[], void>({
-      query: () => '/v1/products',
+    getProducts: builder.query<Product[], { companyId: string }>({
+      query: ({ companyId }) => `/v1/products?companyId=${companyId}`,
       providesTags: ['Product'],
     }),
     getReportByDate: builder.query<Report, string>({
@@ -63,12 +63,12 @@ export const api = createApi({
       }),
       invalidatesTags: (result, error, { date }) => [{ type: 'Report', id: date }],
     }),
-    getBills: builder.query<Bill[], void>({
-      query: () => '/v1/bills',
+    getBills: builder.query<Bill[], { companyId: string }>({
+      query: ({ companyId }) => `/v1/bills?companyId=${companyId}`,
       providesTags: ['Bill'],
     }),
-    getSalesmen: builder.query<Salesman[], void>({
-      query: () => '/v1/salesmen',
+    getSalesmen: builder.query<Salesman[], { companyId: string }>({
+      query: ({ companyId }) => `/v1/salesmen?companyId=${companyId}`,
       providesTags: ['Salesman'],
     }),
     getBuyers: builder.query<Buyer[], void>({

@@ -1,10 +1,14 @@
 "use client";
 import React from "react";
 import { useGetBillsQuery } from '../../../store/api';
+import Cookies from 'js-cookie';
 import { Bill } from '../../../store/billsSlice';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 export default function AdminBillsPage() {
-  const { data: bills = [], error, isLoading } = useGetBillsQuery();
+  const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
+  const companyId = rawCompanyId || '';
+  const { data: bills = [], error, isLoading } = useGetBillsQuery(companyId ? { companyId } : skipToken);
   const [search, setSearch] = React.useState("");
   const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
 

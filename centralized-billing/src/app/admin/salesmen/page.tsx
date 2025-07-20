@@ -3,9 +3,13 @@
 import React, { useState } from 'react';
 import { useGetSalesmenQuery } from '../../../store/api';
 import { Salesman } from '../../../store/salesmenSlice';
+import { skipToken } from '@reduxjs/toolkit/query';
+import Cookies from 'js-cookie';
 
 const SalesmenPage = () => {
-  const { data: salesmen = [], isLoading } = useGetSalesmenQuery();
+  const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
+  const companyId = rawCompanyId || '';
+  const { data: salesmen = [], isLoading } = useGetSalesmenQuery(companyId ? { companyId } : skipToken);
   const [form, setForm] = useState({ name: '', phone: '', address: '', commissionRate: 0, companyId: '' });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
