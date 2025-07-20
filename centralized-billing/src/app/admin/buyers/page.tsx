@@ -2,20 +2,7 @@
 
 import React, { useState } from 'react';
 import { useGetBuyersQuery } from '../../../store/api';
-
-interface BankDetail {
-  bankName: string;
-  accountNumber: string;
-  ifscCode: string;
-  accountHolderName: string;
-}
-
-interface Buyer {
-  id?: string;
-  name: string;
-  address: string;
-  bankDetails: BankDetail[];
-}
+import type { Buyer } from '../../../store/productsSlice';
 
 export default function BuyersPage() {
   const { data: buyers = [], isLoading } = useGetBuyersQuery();
@@ -46,7 +33,7 @@ export default function BuyersPage() {
   const openModal = (buyer?: Buyer) => {
     setErrorMsg('');
     if (buyer) {
-      setEditingId(buyer.id || null);
+      setEditingId(typeof buyer.id === 'string' ? buyer.id : buyer.id !== undefined ? String(buyer.id) : null);
       setForm({
         name: buyer.name,
         address: buyer.address,
@@ -104,7 +91,7 @@ export default function BuyersPage() {
   );
 
   // Bank details handlers
-  const handleBankChange = (idx: number, field: keyof BankDetail, value: string) => {
+  const handleBankChange = (idx: number, field: keyof Buyer['bankDetails'][0], value: string) => {
     setForm(f => ({
       ...f,
       bankDetails: f.bankDetails.map((b, i) => i === idx ? { ...b, [field]: value } : b),
@@ -160,7 +147,7 @@ export default function BuyersPage() {
                   <td className="px-5 py-3 text-gray-800 text-lg">{b.address}</td>
                   <td className="px-5 py-3 text-gray-800 text-base">
                     <ul className="list-disc ml-4">
-                      {b.bankDetails.map((bankDetail: BankDetail, bankIdx: number) => (
+                      {b.bankDetails.map((bankDetail: Buyer['bankDetails'][0], bankIdx: number) => (
                         <li key={bankIdx} className="mb-2">
                           <span className="font-semibold">{bankDetail.bankName}</span> - {bankDetail.accountNumber} <br/>
                           <span className="text-xs">IFSC: {bankDetail.ifscCode}, Holder: {bankDetail.accountHolderName}</span>
@@ -178,7 +165,7 @@ export default function BuyersPage() {
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 font-bold text-xl"
-                      onClick={() => handleDelete(b.id)}
+                      onClick={() => handleDelete(typeof b.id === 'string' ? b.id : b.id !== undefined ? String(b.id) : undefined)}
                       title="Delete"
                     >
                       <span className="material-icons">delete</span>

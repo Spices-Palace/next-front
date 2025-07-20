@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Bill } from '../types';
 
 export interface BillPayment {
   method: string;
@@ -22,6 +21,7 @@ export interface Bill {
   items: BillItem[];
   discountAmount: number;
   finalTotal: number;
+  grandTotal: number;
   payments: BillPayment[];
 }
 

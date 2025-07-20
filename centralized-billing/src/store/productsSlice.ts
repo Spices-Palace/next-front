@@ -14,6 +14,18 @@ export interface Product {
   buyer?: { name: string };
 }
 
+export interface Buyer {
+  id?: string | number;
+  name: string;
+  address: string;
+  bankDetails: {
+    bankName: string;
+    accountNumber: string;
+    ifscCode: string;
+    accountHolderName: string;
+  }[];
+}
+
 interface ProductsState {
   items: Product[];
   loading: boolean;

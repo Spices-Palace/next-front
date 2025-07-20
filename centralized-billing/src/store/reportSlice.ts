@@ -13,18 +13,29 @@ export const fetchReportByDate = createAsyncThunk(
       if (!res.ok) throw new Error('Failed to fetch report');
       return await res.json();
     } catch (err) {
-      return rejectWithValue(err.message || 'Unknown error');
+      if (err instanceof Error) {
+        return rejectWithValue(err.message || 'Unknown error');
+      }
+      return rejectWithValue('Unknown error');
     }
   }
 );
 
+interface ReportState {
+  report: any;
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: ReportState = {
+  report: null,
+  loading: false,
+  error: null,
+};
+
 const reportSlice = createSlice({
   name: 'report',
-  initialState: {
-    report: null,
-    loading: false,
-    error: null,
-  },
+  initialState,
   reducers: {},
   extraReducers: builder => {
     builder
@@ -38,13 +49,13 @@ const reportSlice = createSlice({
       })
       .addCase(fetchReportByDate.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Failed to fetch report';
+        state.error = (action.payload as string) || 'Failed to fetch report';
       });
   },
 });
 
-export const selectReport = state => state.report.report;
-export const selectReportLoading = state => state.report.loading;
-export const selectReportError = state => state.report.error;
+export const selectReport = (state: any) => state.report.report;
+export const selectReportLoading = (state: any) => state.report.loading;
+export const selectReportError = (state: any) => state.report.error;
 
 export default reportSlice.reducer; 
