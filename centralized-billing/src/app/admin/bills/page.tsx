@@ -41,7 +41,7 @@ export default function AdminBillsPage() {
           <div className="text-center text-gray-500 py-8">Loading bills...</div>
         ) : error ? (
           <div className="text-center text-red-500 py-8">
-            {(() => {
+            {((): string | null => {
               if (!error) return null;
               if (typeof error === 'string') return error;
               if (typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message;
