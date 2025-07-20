@@ -84,7 +84,7 @@ export default function AdminBillsPage() {
         )}
       </div>
       {/* View Bill Modal */}
-      {selectedBill && (
+      {selectedBill && typeof selectedBill === 'object' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl w-full flex flex-col">
             <div className="text-xl font-bold mb-4 text-blue-700">Bill Details</div>
