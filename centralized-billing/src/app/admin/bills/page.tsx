@@ -6,9 +6,6 @@ export default function AdminBillsPage() {
   const { data: bills = [], error, isLoading } = useGetBillsQuery();
   const [search, setSearch] = React.useState("");
   const [selectedBill, setSelectedBill] = React.useState<unknown | null>(null);
-  const [showEditModal, setShowEditModal] = React.useState(false);
-  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  const [showCreateModal, setShowCreateModal] = React.useState(false);
 
   const handleDelete = async (billNo: string) => {
     if (!window.confirm('Are you sure you want to delete this bill?')) return;
@@ -68,7 +65,7 @@ export default function AdminBillsPage() {
                     <td className="px-5 py-3">{bill.customerName}</td>
                     <td className="px-5 py-3 font-semibold text-green-700">₹{bill.grandTotal}</td>
                     <td className="px-5 py-3 flex gap-2">
-                      <button className="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded shadow font-semibold transition" onClick={() => { setSelectedBill(bill); setShowEditModal(false); }}>View</button>
+                      <button className="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded shadow font-semibold transition" onClick={() => { setSelectedBill(bill); }}>View</button>
                       <button className="bg-red-600 hover:bg-red-800 text-white px-4 py-2 rounded shadow font-semibold transition" onClick={() => handleDelete(bill.billNo)}>Delete</button>
                     </td>
                   </tr>

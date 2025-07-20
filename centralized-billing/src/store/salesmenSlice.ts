@@ -34,8 +34,11 @@ export const fetchSalesmen = createAsyncThunk<Salesman[], void, { rejectValue: s
       const res = await fetch(`${SALESMEN_API_URL}?companyId=${companyId}`);
       if (!res.ok) throw new Error('Failed to fetch salesmen');
       return await res.json();
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Unknown error');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return rejectWithValue(err.message || 'Unknown error');
+      }
+      return rejectWithValue('Unknown error');
     }
   }
 );

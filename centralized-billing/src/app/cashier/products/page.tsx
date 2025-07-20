@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useGetProductsQuery } from '../../../store/api';
-import type { RootState, AppDispatch } from "../../../store/store";
+import type { AppDispatch } from "../../../store/store";
 import Barcode from "react-barcode";
 import BarcodePrintModal from '../../components/BarcodePrintModal';
 

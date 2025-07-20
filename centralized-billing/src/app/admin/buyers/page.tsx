@@ -24,7 +24,6 @@ export default function BuyersPage() {
   const [form, setForm] = useState<Buyer>({ name: '', address: '', bankDetails: [{ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' }] });
   const [errorMsg, setErrorMsg] = useState('');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
 
   // Fetch buyers from backend
   // useEffect(() => {

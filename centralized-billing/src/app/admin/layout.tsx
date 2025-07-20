@@ -30,14 +30,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <div className="flex items-center justify-center min-h-screen">Checking authorization...</div>;
   }
 
-  const navLinks = [
-    { href: '/admin/products', label: 'Products' },
-    { href: '/admin/buyers', label: 'Buyers' },
-    { href: '/admin/salesmen', label: 'Salesmen' },
-    { href: '/admin/bills', label: 'Bills' },
-    { href: '/admin/report', label: 'Report' },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <main className="flex-1 pb-20">{children}</main>

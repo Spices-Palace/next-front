@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import Cookies from 'js-cookie';
+import { Bill } from '../types';
 
 export interface BillPayment {
   method: string;
@@ -46,8 +46,11 @@ export const fetchBills = createAsyncThunk<Bill[], { date: string; companyId: st
       const res = await fetch(`${BILLS_API_URL}?companyId=${companyId}&date=${date}`);
       if (!res.ok) throw new Error('Failed to fetch bills');
       return await res.json();
-    } catch (err: any) {
-      return rejectWithValue(err.message || 'Unknown error');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return rejectWithValue(err.message || 'Unknown error');
+      }
+      return rejectWithValue('Unknown error');
     }
   }
 );

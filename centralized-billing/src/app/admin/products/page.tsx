@@ -11,12 +11,6 @@ interface Buyer {
   name: string;
 }
 
-const initialBuyers: Buyer[] = [
-  { id: 1, name: 'Alice' },
-  { id: 2, name: 'Bob' },
-  { id: 3, name: 'Charlie' },
-];
-
 interface Product {
   id: number;
   name: string;
@@ -237,7 +231,6 @@ export default function ProductsPage() {
       setBuyerError('Name is required.');
       return;
     }
-    const newId = Date.now();
     // This part needs to be updated to use RTK Query mutation
     // For now, keeping the original fetch logic
     fetch(BUYERS_API_URL, {

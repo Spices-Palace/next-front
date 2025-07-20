@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useGetSalesmenQuery } from '../../../store/api';
+import { Salesman } from '@/types/salesman';
 
 const SalesmenPage = () => {
   const { data: salesmen = [], error, isLoading } = useGetSalesmenQuery();
@@ -12,7 +13,7 @@ const SalesmenPage = () => {
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
 
-  const openModal = (salesman?: any) => {
+  const openModal = (salesman?: Salesman) => {
     if (salesman) {
       setEditingId(salesman.id);
       setForm({

@@ -4,7 +4,6 @@ import Cookies from 'js-cookie';
 export const fetchReportByDate = createAsyncThunk(
   'report/fetchByDate',
   async ({ date }: { date: string }, { rejectWithValue }) => {
-    const companyId = Cookies.get('companyId') || localStorage.getItem('companyId') || '';
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     try {
       const res = await fetch(`${API_URL}/v1/reports/date/${date}`, {
