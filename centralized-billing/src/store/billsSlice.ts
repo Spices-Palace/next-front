@@ -17,6 +17,7 @@ export interface Bill {
   id: string;
   billNo: string;
   date: string;
+  customerName: string;
   salesmanName: string;
   items: BillItem[];
   discountAmount: number;
