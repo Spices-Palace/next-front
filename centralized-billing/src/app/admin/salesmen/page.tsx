@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useGetSalesmenQuery } from '../../../store/api';
-import { Salesman } from '@/types/salesman';
+import { Salesman } from '../../../store/salesmenSlice';
 
 const SalesmenPage = () => {
   const { data: salesmen = [], isLoading } = useGetSalesmenQuery();
