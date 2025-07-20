@@ -107,8 +107,8 @@ function getBasePrice(productType: string, taxInclusivePrice: number) {
 }
 
 export default function CashierBillingPage() {
-  const { data: products = [], error: productsError, isLoading: productsLoading } = useGetProductsQuery();
-  const { data: salesmen = [], error: salesmenError, isLoading: salesmenLoading } = useGetSalesmenQuery();
+  const { data: products = [] } = useGetProductsQuery();
+  const { data: salesmen = [] } = useGetSalesmenQuery();
   const [customer, setCustomer] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [items, setItems] = useState<BillingItem[]>([]);

@@ -39,8 +39,8 @@ const PRODUCTS_API_URL = BASE_URL + '/v1/products';
 const BUYERS_API_URL = BASE_URL + '/v1/buyers';
 
 export default function ProductsPage() {
-  const { data: products = [], error: productsError, isLoading: productsLoading } = useGetProductsQuery();
-  const { data: buyers = [], error: buyersError, isLoading: buyersLoading } = useGetBuyersQuery();
+  const { data: products = [] } = useGetProductsQuery();
+  const { data: buyers = [] } = useGetBuyersQuery();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<{ name: string; type: string; unit: string; cost: string; price: string; quantity: string; buyerId: string; companyId: string; barcode: string }>(

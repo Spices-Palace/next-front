@@ -7,7 +7,7 @@ import Barcode from "react-barcode";
 import BarcodePrintModal from '../../components/BarcodePrintModal';
 
 export default function CashierProductsPage() {
-  const { data: products = [], error: productsError, isLoading: productsLoading } = useGetProductsQuery();
+  const { data: products = [] } = useGetProductsQuery();
   const dispatch: AppDispatch = useDispatch();
   const [search, setSearch] = React.useState("");
   const [printModalOpen, setPrintModalOpen] = React.useState(false);
