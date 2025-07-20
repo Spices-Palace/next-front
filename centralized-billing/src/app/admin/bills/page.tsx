@@ -40,7 +40,15 @@ export default function AdminBillsPage() {
         {isLoading ? (
           <div className="text-center text-gray-500 py-8">Loading bills...</div>
         ) : error ? (
-          <div className="text-center text-red-500 py-8">{error.message || 'Unknown error'}</div>
+          <div className="text-center text-red-500 py-8">
+            {(() => {
+              if (!error) return null;
+              if (typeof error === 'string') return error;
+              if (typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message;
+              if (typeof error === 'object' && 'data' in error && typeof (error as any).data === 'string') return (error as any).data;
+              return 'Unknown error';
+            })()}
+          </div>
         ) : (
           <table className="min-w-full text-base text-left">
             <thead className="bg-blue-100">
