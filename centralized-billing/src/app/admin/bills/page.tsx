@@ -1,11 +1,12 @@
 "use client";
 import React from "react";
 import { useGetBillsQuery } from '../../../store/api';
+import { Bill } from '../../../store/billsSlice';
 
 export default function AdminBillsPage() {
   const { data: bills = [], error, isLoading } = useGetBillsQuery();
   const [search, setSearch] = React.useState("");
-  const [selectedBill, setSelectedBill] = React.useState<unknown | null>(null);
+  const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
 
   const handleDelete = async (billNo: string) => {
     if (!window.confirm('Are you sure you want to delete this bill?')) return;
@@ -84,7 +85,7 @@ export default function AdminBillsPage() {
         )}
       </div>
       {/* View Bill Modal */}
-      {selectedBill && typeof selectedBill === 'object' && (
+      {selectedBill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl w-full flex flex-col">
             <div className="text-xl font-bold mb-4 text-blue-700">Bill Details</div>
