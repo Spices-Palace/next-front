@@ -1,4 +1,8 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { Product } from './productsSlice';
+import { Bill } from './billsSlice';
+import { Salesman } from './salesmenSlice';
+import { Buyer } from './productsSlice';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://nest-back-hfgh.onrender.com';
 
