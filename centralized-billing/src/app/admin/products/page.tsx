@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
 import Cookies from 'js-cookie';
-import { useGetProductsQuery, useGetBuyersQuery } from '../../../store/api';
+import { useGetProductsQuery, useGetBuyersQuery, useAddProductMutation, useUpdateProductMutation, useDeleteProductMutation } from '../../../store/api';
 import BarcodePrintModal from '../../components/BarcodePrintModal';
 import { skipToken } from '@reduxjs/toolkit/query';
 
@@ -16,7 +16,7 @@ interface Product {
   price: number;
   quantity: number;
   barcode: string;
-  buyerId: number;
+  buyerId: string;
   companyId: string;
   buyer?: { name: string };
 }
@@ -44,6 +44,9 @@ export default function ProductsPage() {
   const companyId = rawCompanyId || '';
   const { data: products = [] } = useGetProductsQuery(companyId ? { companyId } : skipToken);
   const { data: buyers = [] } = useGetBuyersQuery(); // If buyers should be company-specific, update to useGetBuyersQuery({ companyId }, { skip: !companyId }) and update the API definition accordingly.
+  const [addProduct, { isLoading: isAdding }] = useAddProductMutation();
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
+  const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<{ name: string; type: string; unit: string; cost: string; price: string; quantity: string; buyerId: string; companyId: string; barcode: string }>(
@@ -69,6 +72,8 @@ export default function ProductsPage() {
   const [barcodeToPrint, setBarcodeToPrint] = useState<string | null>(null);
   const [quantityToPrint, setQuantityToPrint] = useState<number>(1);
   const [companyName, setCompanyName] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Update unit options when type changes
   const unitOptions = PRODUCT_TYPES.find(t => t.label === form.type)?.unit || ['pieces'];
@@ -92,7 +97,7 @@ export default function ProductsPage() {
       return;
     }
     if (product) {
-      let buyerIdStr = String(product.buyerId);
+      let buyerIdStr = product.buyerId;
       // If the buyer is not found in the buyers list, auto-select the first available buyer
       const buyerExists = buyers.some(b => String(b.id) === buyerIdStr);
       if (!buyerExists) {
@@ -166,50 +171,56 @@ export default function ProductsPage() {
     };
     try {
       if (editingId) {
-        // This part needs to be updated to use RTK Query mutation
-        // For now, keeping the original fetch logic
-        await fetch(`${PRODUCTS_API_URL}/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await updateProduct({
+          id: editingId,
+          name: payload.name,
+          type: payload.type,
+          unit: payload.unit,
+          cost: payload.cost,
+          price: payload.price,
+          quantity: payload.quantity,
+          barcode: payload.barcode,
+          buyerId: payload.buyerId,
+          companyId: payload.companyId,
+        }).unwrap();
         setSuccess('Product updated successfully!');
-        // await dispatch(fetchProducts()); // This line is removed
         setTimeout(() => setSuccess(''), 3000);
         setModalOpen(false);
       } else {
-        // This part needs to be updated to use RTK Query mutation
-        // For now, keeping the original fetch logic
-        await fetch(PRODUCTS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        await addProduct(payload).unwrap();
         setSuccess('Product added successfully!');
-        // await dispatch(fetchProducts()); // This line is removed
         setTimeout(() => setSuccess(''), 3000);
         setModalOpen(false);
         setBarcodeToPrint(barcode);
         setQuantityToPrint(Number(form.quantity) || 1);
         setPrintBarcodeModalOpen(true);
       }
-    } catch {
-      setError('Failed to save product.');
+    } catch (err: any) {
+      setError(err?.data?.message || 'Failed to save product.');
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete?.id) return;
     try {
-      // This part needs to be updated to use RTK Query mutation
-      // For now, keeping the original fetch logic
-      await fetch(`${PRODUCTS_API_URL}/${id}`, { method: 'DELETE' });
-      // await dispatch(fetchProducts()); // This line is removed
+      await deleteProduct(productToDelete.id).unwrap();
       setSuccess('Product deleted successfully!');
       setTimeout(() => setSuccess(''), 3000);
-      closeModal();
-    } catch {
-      setError('Failed to delete product.');
+      setDeleteModalOpen(false);
+      setProductToDelete(null);
+    } catch (err: any) {
+      setError(err?.data?.message || 'Failed to delete product.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setProductToDelete(null);
   };
 
   // Filtered products for search
@@ -219,7 +230,7 @@ export default function ProductsPage() {
       p.barcode.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getBuyerName = (buyerId: number) => buyers.find(b => b.id === buyerId)?.name || '';
+  const getBuyerName = (buyerId: string) => buyers.find(b => String(b.id) === buyerId)?.name || '';
 
   // Add new buyer from modal
   const handleAddBuyer = (e: React.FormEvent) => {
@@ -312,7 +323,7 @@ export default function ProductsPage() {
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 font-bold text-xl"
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => handleDeleteClick(product)}
                       title="Delete"
                     >
                       <span className="material-icons">delete</span>
@@ -432,9 +443,10 @@ export default function ProductsPage() {
               {success && <div className="text-green-600 text-base mb-2">{success}</div>}
               <button
                 type="submit"
-                className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-3 rounded-lg shadow hover:from-blue-600 hover:to-blue-800 font-semibold text-lg transition"
+                className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-3 rounded-lg shadow hover:from-blue-600 hover:to-blue-800 font-semibold text-lg transition disabled:opacity-50"
+                disabled={isAdding || isUpdating}
               >
-                {editingId ? 'Update Product' : 'Add Product'}
+                {isAdding || isUpdating ? 'Saving...' : (editingId ? 'Update Product' : 'Add Product')}
               </button>
             </form>
           </div>
@@ -483,6 +495,36 @@ export default function ProductsPage() {
         open={printBarcodeModalOpen}
         onClose={() => setPrintBarcodeModalOpen(false)}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+            <div className="text-xl font-bold mb-4 text-red-700">Confirm Delete</div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete product <span className="font-bold">{productToDelete.name}</span>?
+              <br />
+              <span className="text-sm text-gray-500">This action cannot be undone.</span>
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                className="px-6 py-2 border border-gray-300 rounded font-semibold text-gray-700 hover:bg-gray-50 transition"
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition disabled:opacity-50"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

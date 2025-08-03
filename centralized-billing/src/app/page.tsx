@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
+import { useGetProductsQuery, useGetSalesmenQuery, useGetBillsQuery } from '../store/api';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://nest-back-hfgh.onrender.com';
 const API_URL = `${API_BASE_URL}/v1/companies/login`;
@@ -90,7 +92,53 @@ export default function LoginPage() {
           if (data.companyId) {
             Cookies.set('companyId', data.companyId, { expires: 7 });
           }
-          // Prefetch all company data using Redux
+          // Prefetch all company data for fast loading
+          const prefetchData = async () => {
+            try {
+              // Prefetch products, salesmen, and bills data
+              const token = data.token;
+              const companyId = data.companyId;
+              
+              // Store data in localStorage for immediate access
+              const prefetchPromises = [
+                fetch(`${API_BASE_URL}/v1/products?companyId=${companyId}`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_BASE_URL}/v1/salesmen?companyId=${companyId}`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_BASE_URL}/v1/bills?companyId=${companyId}`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                })
+              ];
+              
+              const [productsRes, salesmenRes, billsRes] = await Promise.allSettled(prefetchPromises);
+              
+              // Store successful responses in localStorage
+              if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+                const productsData = await productsRes.value.json();
+                localStorage.setItem('cached_products', JSON.stringify(productsData));
+              }
+              
+              if (salesmenRes.status === 'fulfilled' && salesmenRes.value.ok) {
+                const salesmenData = await salesmenRes.value.json();
+                localStorage.setItem('cached_salesmen', JSON.stringify(salesmenData));
+              }
+              
+              if (billsRes.status === 'fulfilled' && billsRes.value.ok) {
+                const billsData = await billsRes.value.json();
+                localStorage.setItem('cached_bills', JSON.stringify(billsData));
+              }
+              
+              console.log('Data prefetched successfully');
+            } catch (error) {
+              console.log('Prefetch failed, will load data normally:', error);
+            }
+          };
+          
+          // Start prefetching and navigate
+          prefetchData();
+          
           if (data.role === 'admin') {
             router.replace('/admin/products');
           } else if (data.role === 'cashier') {

@@ -9,7 +9,7 @@ export interface Product {
   price: number;
   quantity: number;
   barcode: string;
-  buyerId: number;
+  buyerId: string;
   companyId: string;
   buyer?: { name: string };
 }

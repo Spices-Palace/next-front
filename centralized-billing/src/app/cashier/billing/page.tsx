@@ -1,13 +1,11 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import { useGetProductsQuery, useGetSalesmenQuery } from '../../../store/api';
+import { useGetProductsQuery, useGetSalesmenQuery, useCreateBillMutation } from '../../../store/api';
 import type { Product } from "../../../store/productsSlice";
 import Cookies from 'js-cookie';
 import { skipToken } from '@reduxjs/toolkit/query';
 
-const BILLS_API_URL = process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL + '/v1/bills'
-  : 'http://localhost:4000/v1/bills';
+
 
 // Extend Product for billing items
 type BillingItem = Product & {
@@ -53,8 +51,40 @@ function calculateTotalTaxes(items: BillingItem[]) {
 }
 
 // Function to parse barcode and get product with price adjustment
+// Create a Map for faster product lookup
+const createProductMap = (products: Product[]) => {
+  const productMap = new Map<string, Product>();
+  const originalBarcodeMap = new Map<string, Product>();
+  
+  products.forEach(product => {
+    productMap.set(product.barcode, product);
+    
+    // Also store products that could be original barcodes for modified barcodes
+    if (product.barcode.endsWith('A')) {
+      originalBarcodeMap.set(product.barcode, product);
+    }
+  });
+  
+  return { productMap, originalBarcodeMap };
+};
+
 function parseBarcodeAndGetProduct(barcode: string, products: Product[]) {
-  // Check if it's a modified barcode (has 3 digits after A)
+  // Create optimized lookup maps
+  const { productMap, originalBarcodeMap } = createProductMap(products);
+  
+  // First, check for exact match (normal barcode) - O(1) lookup
+  const exactProduct = productMap.get(barcode);
+  if (exactProduct) {
+    console.log(`Exact match found for barcode: ${barcode}`);
+    return {
+      ...exactProduct,
+      originalPrice: Math.round(exactProduct.price),
+      priceIncrease: 0,
+      modifiedBarcode: null
+    };
+  }
+  
+  // If no exact match, check if it's a modified barcode (has 3 digits after A)
   const match = barcode.match(/^(.+A)(\d{3})$/);
   
   if (match) {
@@ -62,8 +92,8 @@ function parseBarcodeAndGetProduct(barcode: string, products: Product[]) {
     const originalBarcode = match[1]; // e.g., "1000A"
     const priceCode = match[2]; // e.g., "001", "010", "100"
     
-    // Find the original product
-    const product = products.find(p => p.barcode === originalBarcode);
+    // Find the original product using optimized lookup
+    const product = originalBarcodeMap.get(originalBarcode);
     
     if (product) {
       // Calculate price increase based on the 3-digit code
@@ -74,7 +104,7 @@ function parseBarcodeAndGetProduct(barcode: string, products: Product[]) {
       const originalPrice = Math.round(product.price);
       const finalPrice = originalPrice + priceIncrease;
       
-      console.log(`Barcode: ${barcode}, Original: ${originalBarcode}, PriceCode: ${priceCode}, Multiplier: ${priceMultiplier}, Increase: ${priceIncrease}, OriginalPrice: ${originalPrice}, FinalPrice: ${finalPrice}`);
+      console.log(`Modified barcode: ${barcode}, Original: ${originalBarcode}, PriceCode: ${priceCode}, Multiplier: ${priceMultiplier}, Increase: ${priceIncrease}, OriginalPrice: ${originalPrice}, FinalPrice: ${finalPrice}`);
       
       return {
         ...product,
@@ -84,19 +114,9 @@ function parseBarcodeAndGetProduct(barcode: string, products: Product[]) {
         modifiedBarcode: barcode
       };
     }
-  } else {
-    // Normal barcode
-    const product = products.find(p => p.barcode === barcode);
-    if (product) {
-      return {
-        ...product,
-        originalPrice: Math.round(product.price),
-        priceIncrease: 0,
-        modifiedBarcode: null
-      };
-    }
   }
   
+  console.log(`No product found for barcode: ${barcode}`);
   return null;
 }
 
@@ -110,8 +130,48 @@ function getBasePrice(productType: string, taxInclusivePrice: number) {
 export default function CashierBillingPage() {
   const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
   const companyId = rawCompanyId || '';
-  const { data: products = [] } = useGetProductsQuery(companyId ? { companyId } : skipToken);
-  const { data: salesmen = [] } = useGetSalesmenQuery(companyId ? { companyId } : skipToken);
+  
+  // Try to get cached data first for instant loading
+  const [cachedProducts, setCachedProducts] = useState<any[]>([]);
+  const [cachedSalesmen, setCachedSalesmen] = useState<any[]>([]);
+  const [isUsingCache, setIsUsingCache] = useState(false);
+  
+  // Load cached data on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cachedProductsData = localStorage.getItem('cached_products');
+      const cachedSalesmenData = localStorage.getItem('cached_salesmen');
+      
+      if (cachedProductsData) {
+        try {
+          const products = JSON.parse(cachedProductsData);
+          setCachedProducts(products);
+          setIsUsingCache(true);
+        } catch (error) {
+          console.log('Failed to parse cached products');
+        }
+      }
+      
+      if (cachedSalesmenData) {
+        try {
+          const salesmen = JSON.parse(cachedSalesmenData);
+          setCachedSalesmen(salesmen);
+        } catch (error) {
+          console.log('Failed to parse cached salesmen');
+        }
+      }
+    }
+  }, []);
+  
+  // Use cached data if available, otherwise fetch from API
+  const { data: apiProducts = [] } = useGetProductsQuery(companyId ? { companyId } : skipToken);
+  const { data: apiSalesmen = [] } = useGetSalesmenQuery(companyId ? { companyId } : skipToken);
+  
+  // Use cached data first, fallback to API data
+  const products = isUsingCache && cachedProducts.length > 0 ? cachedProducts : apiProducts;
+  const salesmen = isUsingCache && cachedSalesmen.length > 0 ? cachedSalesmen : apiSalesmen;
+  
+  const [createBill, { isLoading: isCreating }] = useCreateBillMutation();
   const [customer, setCustomer] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [items, setItems] = useState<BillingItem[]>([]);
@@ -167,6 +227,9 @@ export default function CashierBillingPage() {
   const today = new Date().toLocaleDateString();
   const companyName = typeof window !== 'undefined' ? (localStorage.getItem('companyName') || "COMPANY") : "COMPANY";
   const companyGstNo = typeof window !== 'undefined' ? (localStorage.getItem('companyGstNo') || '27AAAPL1234C1ZV') : '27AAAPL1234C1ZV'; // fallback GST number
+  
+  // Performance indicator
+  const dataSource = isUsingCache ? 'cached' : 'api';
 
   // Add product by barcode (scan or type)
   const handleBarcodeAdd = (e: React.FormEvent) => {
@@ -187,14 +250,21 @@ export default function CashierBillingPage() {
     const productWithPrice = parseBarcodeAndGetProduct(code, products) as BillingItem | null;
     if (!productWithPrice) {
       console.log('Product not found for barcode:', code);
+      setErrorModal('Product not found. Please check the barcode.');
       setIsSubmitting(false);
       return;
     }
-    // Check for availability
+    
+    // Enhanced availability checking
     if (productWithPrice.quantity !== undefined && productWithPrice.quantity <= 0) {
-      setErrorModal('Item not available');
+      setErrorModal(`Item "${productWithPrice.name}" is out of stock (Quantity: 0)`);
       setIsSubmitting(false);
       return;
+    }
+    
+    // Check if quantity is low (less than 5)
+    if (productWithPrice.quantity !== undefined && productWithPrice.quantity <= 5) {
+      console.log(`Low stock warning: ${productWithPrice.name} has ${productWithPrice.quantity} items left`);
     }
     
     console.log('Product found:', productWithPrice.name, 'Price:', productWithPrice.price);
@@ -260,7 +330,54 @@ export default function CashierBillingPage() {
   };
 
   // Function to save bill to backend
-  const saveBill = async (): Promise<void> => {
+  // Function to refresh cached data after billing
+  const refreshCachedData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const companyId = localStorage.getItem('companyId');
+      
+      if (!token || !companyId) return;
+      
+      // Fetch fresh products data
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://nest-back-hfgh.onrender.com'}/v1/products?companyId=${companyId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const freshProducts = await response.json();
+        localStorage.setItem('cached_products', JSON.stringify(freshProducts));
+        setCachedProducts(freshProducts);
+        console.log('Cached products refreshed after billing');
+      }
+    } catch (error) {
+      console.log('Failed to refresh cached data:', error);
+    }
+  };
+
+  // Function to update product quantities in cache after billing
+  const updateCacheQuantities = (billedItems: BillingItem[]) => {
+    try {
+      const currentProducts = [...cachedProducts];
+      
+      billedItems.forEach(billedItem => {
+        const productIndex = currentProducts.findIndex(p => p.id === billedItem.id);
+        if (productIndex !== -1 && currentProducts[productIndex].quantity !== undefined) {
+          // Update quantity in cache
+          currentProducts[productIndex].quantity = Math.max(0, currentProducts[productIndex].quantity - billedItem.quantity);
+          console.log(`Updated ${billedItem.name} quantity from ${currentProducts[productIndex].quantity + billedItem.quantity} to ${currentProducts[productIndex].quantity}`);
+        }
+      });
+      
+      // Update cache with new quantities
+      localStorage.setItem('cached_products', JSON.stringify(currentProducts));
+      setCachedProducts(currentProducts);
+      console.log('Cache quantities updated after billing');
+    } catch (error) {
+      console.log('Failed to update cache quantities:', error);
+    }
+  };
+
+  const saveBill = async (): Promise<any> => {
     if (items.length === 0 || !selectedSalesman) {
       setErrorModal('Please add items and select salesman before saving.');
       return;
@@ -290,67 +407,83 @@ export default function CashierBillingPage() {
       });
 
       const salesmanObj = salesmen.find(s => s.name === selectedSalesman);
-      const billData = {
+      
+      const billData: any = {
         billNo: billNo,
         date: new Date().toISOString(),
         customerName: customer || 'Walk-in Customer',
         salesmanName: selectedSalesman,
-        salesmanId: salesmanObj ? salesmanObj.id : undefined,
         companyId: companyId,
         items: billItems,
-        totalCGST: taxes.totalCGST,
-        totalSGST: taxes.totalSGST,
-        grandTotal: grandTotal,
-        discountType: discountType,
-        discountValue: discountValue,
-        discountAmount: discount,
-        finalTotal: finalTotal,
-        payments: payments,
+        totalCGST: Number(taxes.totalCGST),
+        totalSGST: Number(taxes.totalSGST),
+        grandTotal: Number(grandTotal),
+        discountType: discount > 0 ? (discountType === 'percentage' ? 'percentage' : 'custom') : 'percentage',
+        discountValue: discount > 0 ? (Number(discountValue) || 0) : 0,
+        discountAmount: discount > 0 ? (Number(discount) || 0) : 0,
+        finalTotal: Number(finalTotal),
+        payments: payments.map(p => ({
+          method: p.method,
+          amount: Number(p.amount)
+        })),
         status: 'completed'
       };
 
-      console.log('Saving bill data:', JSON.stringify(billData, null, 2));
+      // Only add salesmanId if it exists
+      if (salesmanObj?.id) {
+        billData.salesmanId = salesmanObj.id;
+      }
 
-      const response = await fetch(BILLS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(billData),
+      // Clean up any undefined or null values
+      Object.keys(billData).forEach(key => {
+        if (billData[key] === undefined || billData[key] === null) {
+          delete billData[key];
+        }
       });
 
-      if (!response.ok) {
-        let errorMsg = 'Failed to save bill';
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.message) {
-            errorMsg = errorData.message;
-          } else if (typeof errorData === 'string') {
-            errorMsg = errorData;
-          }
-        } catch {
-          // Ignore JSON parse errors, use default message
-        }
-        setErrorModal(errorMsg);
-        throw new Error(errorMsg);
+      // Validate required fields
+      const requiredFields = ['billNo', 'date', 'customerName', 'salesmanName', 'companyId', 'items', 'totalCGST', 'totalSGST', 'grandTotal', 'finalTotal', 'payments', 'status'];
+      const missingFields = requiredFields.filter(field => !billData[field]);
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields);
+        setErrorModal(`Missing required fields: ${missingFields.join(', ')}`);
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
 
-      const savedBill = await response.json();
-      console.log('Bill saved successfully:', savedBill);
+      // Optimized: Remove excessive logging for faster performance
+      console.log('Saving bill with', items.length, 'items, total:', finalTotal);
+
+      const savedBill = await createBill(billData).unwrap();
+      console.log('Bill saved successfully');
       
-      // Show success message
-      // Optionally, you can show a success modal here if desired
+      // Update cache quantities immediately for faster availability checking
+      updateCacheQuantities(items);
+      
+      // Also refresh from server in background for complete accuracy
+      refreshCachedData();
       
       return savedBill;
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error saving bill:', error);
+      console.error('Error details:', {
+        status: error?.status,
+        statusText: error?.statusText,
+        data: error?.data,
+        message: error?.message,
+        originalError: error
+      });
+      
       let errorMsg = 'Failed to save bill. Please try again.';
-      if (typeof error === 'string') {
-        errorMsg = error;
-      } else if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: string }).message === 'string') {
-        errorMsg = (error as { message?: string }).message as string;
+      if (error?.data?.message) {
+        errorMsg = error.data.message;
+      } else if (error?.data?.error) {
+        errorMsg = error.data.error;
+      } else if (error?.message) {
+        errorMsg = error.message;
+      } else if (error?.status) {
+        errorMsg = `Server error: ${error.status} ${error.statusText || ''}`;
       }
+      
       setErrorModal(errorMsg);
       throw error;
     }
@@ -361,70 +494,47 @@ export default function CashierBillingPage() {
       setShowSalesmanModal(true);
       return;
     }
+    
     try {
-      // First save the bill
-      await saveBill();
-      // Then print
-      console.log('Print button clicked');
+      // Show loading state immediately
       setShowPrint(true);
-      // Use a longer timeout to ensure the print element is rendered
+      
+      // Save bill first
+      await saveBill();
+      
+      // Optimized print with shorter timeout
       setTimeout(() => {
         if (printRef.current) {
-          console.log('Print element found, attempting to print');
           try {
-            // Try the primary print method
             window.print();
-            console.log('Print dialog opened');
           } catch (error) {
-            console.error('Primary print method failed:', error);
-            // Fallback: Create a new window for printing
-            try {
-              const printWindow = window.open('', '_blank');
-              if (printWindow) {
-                printWindow.document.write(`
-                  <html>
-                    <head>
-                      <title>Print Bill</title>
-                      <style>
-                        @media print {
-                          @page { size: A4; margin: 0; }
-                          body { background: white !important; margin: 0 !important; padding: 0 !important; }
-                          * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-                        </style>
-                      </head>
-                      <body>
-                        ${printRef.current.innerHTML}
-                      </body>
-                    </html>
-                `);
-                printWindow.document.close();
-                printWindow.focus();
-                printWindow.print();
-                printWindow.close();
-                console.log('Fallback print method successful');
-              } else {
-                throw new Error('Could not open print window');
-              }
-            } catch (fallbackError) {
-              console.error('Fallback print method also failed:', fallbackError);
-              setErrorModal('Print failed. Please try using Ctrl+P or Cmd+P to print manually.');
-            }
+            console.error('Print failed:', error);
+            setErrorModal('Print failed. Please use Ctrl+P to print manually.');
           }
         } else {
-          console.error('Print element not found');
           setErrorModal('Print element not found. Please try again.');
         }
         setShowPrint(false);
-      }, 500); // Increased timeout to 500ms
+      }, 200); // Reduced timeout for faster response
+      
     } catch (error: unknown) {
       console.error('Error in save and print:', error);
-      // Don't proceed with printing if save failed
+      setShowPrint(false);
+      setErrorModal('Failed to save bill. Please try again.');
     }
   };
 
   return (
     <div className="p-4 w-full max-w-5xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-blue-700 mb-8">Billing</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-extrabold text-blue-700">Billing</h1>
+        {isUsingCache && (
+          <div className="flex items-center gap-2 text-sm">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-green-600 font-medium">Fast Mode (Cached Data)</span>
+          </div>
+        )}
+      </div>
       <div className="bg-white p-8 rounded-2xl shadow-lg border border-blue-100 mb-10" style={{ maxWidth: '900px', padding: '48px' }}>
         <div className="flex flex-col gap-4 mb-6">
           <select
@@ -685,11 +795,11 @@ export default function CashierBillingPage() {
             )}
             <div className="text-xl font-bold border-t pt-2 text-black">Grand Total: ₹{finalTotal}</div>
             <button
-              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-8 py-3 rounded-lg shadow hover:from-blue-600 hover:to-blue-800 font-semibold text-lg transition"
+              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-8 py-3 rounded-lg shadow hover:from-blue-600 hover:to-blue-800 font-semibold text-lg transition disabled:opacity-50"
               onClick={handlePrint}
-              disabled={items.length === 0 || !selectedSalesman || paymentError}
+              disabled={items.length === 0 || !selectedSalesman || paymentError || isCreating}
             >
-              Save & Print
+              {isCreating ? 'Saving...' : 'Save & Print'}
             </button>
           </div>
         </div>

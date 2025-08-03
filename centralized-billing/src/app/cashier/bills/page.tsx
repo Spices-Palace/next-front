@@ -60,7 +60,7 @@ export default function CashierBillsPage() {
                   <td className="px-5 py-3 font-mono text-blue-700 font-bold">{bill.billNo}</td>
                   <td className="px-5 py-3">{bill.date ? bill.date.slice(0, 10) : ''}</td>
                   <td className="px-5 py-3">{bill.customerName}</td>
-                  <td className="px-5 py-3 font-semibold text-green-700">₹{bill.grandTotal}</td>
+                  <td className="px-5 py-3 font-semibold text-green-700">₹{bill.finalTotal || bill.grandTotal}</td>
                   <td className="px-5 py-3">
                     <button className="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded shadow font-semibold transition">View</button>
                   </td>

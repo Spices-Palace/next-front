@@ -19,6 +19,8 @@ const SalesmenPage = () => {
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [deleteSalesman, { isLoading: isDeleting }] = useDeleteSalesmanMutation();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [salesmanToDelete, setSalesmanToDelete] = useState<Salesman | null>(null);
 
   const openModal = (salesman?: Salesman) => {
     if (salesman) {
@@ -88,18 +90,29 @@ const SalesmenPage = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this salesman?')) return;
+  const handleDeleteClick = (salesman: Salesman) => {
+    setSalesmanToDelete(salesman);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!salesmanToDelete?.id) return;
     setErrorMsg('');
     setSuccess('');
     try {
-      await deleteSalesman(id).unwrap();
+      await deleteSalesman(salesmanToDelete.id).unwrap();
       setSuccess('Salesman deleted successfully!');
       setTimeout(() => setSuccess(''), 3000);
-      closeModal();
+      setDeleteModalOpen(false);
+      setSalesmanToDelete(null);
     } catch (err: any) {
       setErrorMsg(err?.data?.message || 'Failed to delete salesman.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setSalesmanToDelete(null);
   };
 
   // Filtered salesmen for search (remove email)
@@ -166,7 +179,7 @@ const SalesmenPage = () => {
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 font-bold text-xl"
-                      onClick={() => handleDelete(s.id)}
+                      onClick={() => handleDeleteClick(s)}
                       title="Delete"
                     >
                       <span className="material-icons">delete</span>
@@ -261,6 +274,36 @@ const SalesmenPage = () => {
                 {editingId ? 'Update Salesman' : 'Add Salesman'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && salesmanToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+            <div className="text-xl font-bold mb-4 text-red-700">Confirm Delete</div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete salesman <span className="font-bold">{salesmanToDelete.name}</span>?
+              <br />
+              <span className="text-sm text-gray-500">This action cannot be undone.</span>
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                className="px-6 py-2 border border-gray-300 rounded font-semibold text-gray-700 hover:bg-gray-50 transition"
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition disabled:opacity-50"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

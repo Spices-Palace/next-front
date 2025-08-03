@@ -17,6 +17,8 @@ export default function BuyersPage() {
   const [form, setForm] = useState<Buyer>({ name: '', address: '', bankDetails: [{ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' }] });
   const [errorMsg, setErrorMsg] = useState('');
   const [search, setSearch] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [buyerToDelete, setBuyerToDelete] = useState<Buyer | null>(null);
 
   // Fetch buyers from backend
   // useEffect(() => {
@@ -78,15 +80,25 @@ export default function BuyersPage() {
     }
   };
 
-  const handleDelete = async (id?: string | number) => {
-    if (!id) return;
-    if (!window.confirm('Are you sure you want to delete this buyer?')) return;
+  const handleDeleteClick = (buyer: Buyer) => {
+    setBuyerToDelete(buyer);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!buyerToDelete?.id) return;
     try {
-      await deleteBuyer(id).unwrap();
-      closeModal();
+      await deleteBuyer(buyerToDelete.id).unwrap();
+      setDeleteModalOpen(false);
+      setBuyerToDelete(null);
     } catch (err: any) {
       setErrorMsg(err?.data?.message || 'Failed to delete buyer.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setBuyerToDelete(null);
   };
 
   // Search filter
@@ -170,7 +182,7 @@ export default function BuyersPage() {
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 font-bold text-xl"
-                      onClick={() => handleDelete(typeof b.id === 'string' ? b.id : b.id !== undefined ? String(b.id) : undefined)}
+                      onClick={() => handleDeleteClick(b)}
                       title="Delete"
                     >
                       <span className="material-icons">delete</span>
@@ -274,6 +286,36 @@ export default function BuyersPage() {
                 {editingId ? 'Update Buyer' : 'Add Buyer'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && buyerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+            <div className="text-xl font-bold mb-4 text-red-700">Confirm Delete</div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete buyer <span className="font-bold">{buyerToDelete.name}</span>?
+              <br />
+              <span className="text-sm text-gray-500">This action cannot be undone.</span>
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                className="px-6 py-2 border border-gray-300 rounded font-semibold text-gray-700 hover:bg-gray-50 transition"
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition disabled:opacity-50"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

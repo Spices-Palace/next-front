@@ -37,7 +37,7 @@ const initialState: BillsState = {
   error: null,
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nest-back-hfgh.onrender.com';
 const BILLS_API_URL = BASE_URL + '/v1/bills/by-company-date';
 
 export const fetchBills = createAsyncThunk<Bill[], { date: string; companyId: string }, { rejectValue: string }>(

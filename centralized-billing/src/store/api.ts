@@ -51,6 +51,29 @@ export const api = createApi({
       query: ({ companyId }) => `/v1/products?companyId=${companyId}`,
       providesTags: ['Product'],
     }),
+    addProduct: builder.mutation<Product, Omit<Product, 'id'> & { buyerId: string; companyId: string }>({
+      query: (body) => ({
+        url: '/v1/products',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Product'],
+    }),
+    updateProduct: builder.mutation<Product, { id: number; name: string; type: string; unit: string; cost: number; price: number; quantity: number; barcode: string; buyerId: string; companyId: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/v1/products/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Product'],
+    }),
+    deleteProduct: builder.mutation<{ success: boolean }, number>({
+      query: (id) => ({
+        url: `/v1/products/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Product'],
+    }),
     getReportByDate: builder.query<Report, string>({
       query: (date) => `/v1/reports/date/${date}`,
       providesTags: (result, error, date) => [{ type: 'Report', id: date }],
@@ -66,6 +89,21 @@ export const api = createApi({
     getBills: builder.query<Bill[], { companyId: string }>({
       query: ({ companyId }) => `/v1/bills?companyId=${companyId}`,
       providesTags: ['Bill'],
+    }),
+    deleteBill: builder.mutation<{ success: boolean }, string>({
+      query: (id) => ({
+        url: `/v1/bills/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Bill'],
+    }),
+    createBill: builder.mutation<Bill, any>({
+      query: (body) => ({
+        url: '/v1/bills',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Bill'],
     }),
     getSalesmen: builder.query<Salesman[], { companyId: string }>({
       query: ({ companyId }) => `/v1/salesmen?companyId=${companyId}`,
@@ -139,9 +177,14 @@ export const {
 
 export const {
   useGetProductsQuery,
+  useAddProductMutation,
+  useUpdateProductMutation,
+  useDeleteProductMutation,
   useGetReportByDateQuery,
   useGenerateReportMutation,
   useGetBillsQuery,
+  useCreateBillMutation,
+  useDeleteBillMutation,
   useGetSalesmenQuery,
   useGetBuyersQuery,
   useAddBuyerMutation,

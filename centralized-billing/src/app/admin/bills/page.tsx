@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useGetBillsQuery } from '../../../store/api';
+import { useGetBillsQuery, useDeleteBillMutation } from '../../../store/api';
 import Cookies from 'js-cookie';
 import { Bill } from '../../../store/billsSlice';
 import { skipToken } from '@reduxjs/toolkit/query';
@@ -9,19 +9,31 @@ export default function AdminBillsPage() {
   const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
   const companyId = rawCompanyId || '';
   const { data: bills = [], error, isLoading } = useGetBillsQuery(companyId ? { companyId } : skipToken);
+  const [deleteBill, { isLoading: isDeleting }] = useDeleteBillMutation();
   const [search, setSearch] = React.useState("");
   const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
+  const [billToDelete, setBillToDelete] = React.useState<Bill | null>(null);
 
-  const handleDelete = async (billNo: string) => {
-    if (!window.confirm('Are you sure you want to delete this bill?')) return;
+  const handleDeleteClick = (bill: Bill) => {
+    setBillToDelete(bill);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!billToDelete?.id) return;
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const res = await fetch(`${API_URL}/v1/bills/bill-no/${billNo}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete bill');
-      // fetchBills(); // This line is removed as per the edit hint
+      await deleteBill(billToDelete.id).unwrap();
+      setDeleteModalOpen(false);
+      setBillToDelete(null);
     } catch (err: any) {
-      alert(err.message || 'Failed to delete bill');
+      alert(err?.data?.message || 'Failed to delete bill');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setBillToDelete(null);
   };
 
   const filteredBills = bills.filter(
@@ -76,10 +88,10 @@ export default function AdminBillsPage() {
                     <td className="px-5 py-3 font-mono text-blue-700 font-bold">{bill.billNo}</td>
                     <td className="px-5 py-3">{bill.date ? bill.date.slice(0, 10) : ''}</td>
                     <td className="px-5 py-3">{bill.customerName}</td>
-                    <td className="px-5 py-3 font-semibold text-green-700">₹{bill.grandTotal}</td>
+                    <td className="px-5 py-3 font-semibold text-green-700">₹{bill.finalTotal || bill.grandTotal}</td>
                     <td className="px-5 py-3 flex gap-2">
                       <button className="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded shadow font-semibold transition" onClick={() => { setSelectedBill(bill); }}>View</button>
-                      <button className="bg-red-600 hover:bg-red-800 text-white px-4 py-2 rounded shadow font-semibold transition" onClick={() => handleDelete(bill.billNo)}>Delete</button>
+                      <button className="bg-red-600 hover:bg-red-800 text-white px-4 py-2 rounded shadow font-semibold transition" onClick={() => handleDeleteClick(bill)}>Delete</button>
                     </td>
                   </tr>
                 ))
@@ -100,6 +112,36 @@ export default function AdminBillsPage() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && billToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+            <div className="text-xl font-bold mb-4 text-red-700">Confirm Delete</div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete bill <span className="font-bold">{billToDelete.billNo}</span>?
+              <br />
+              <span className="text-sm text-gray-500">This action cannot be undone.</span>
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                className="px-6 py-2 border border-gray-300 rounded font-semibold text-gray-700 hover:bg-gray-50 transition"
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition disabled:opacity-50"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
