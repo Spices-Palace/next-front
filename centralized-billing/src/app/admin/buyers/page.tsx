@@ -1,11 +1,17 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useGetBuyersQuery } from '../../../store/api';
+import { useGetBuyersQuery, useAddBuyerMutation, useUpdateBuyerMutation, useDeleteBuyerMutation } from '../../../store/api';
 import type { Buyer } from '../../../store/productsSlice';
+import Cookies from 'js-cookie';
 
 export default function BuyersPage() {
   const { data: buyers = [], isLoading } = useGetBuyersQuery();
+  const [addBuyer, { isLoading: isAdding }] = useAddBuyerMutation();
+  const [updateBuyer, { isLoading: isUpdating }] = useUpdateBuyerMutation();
+  const [deleteBuyer, { isLoading: isDeleting }] = useDeleteBuyerMutation();
+  const rawCompanyId = Cookies.get('companyId') || (typeof window !== 'undefined' ? localStorage.getItem('companyId') : '');
+  const companyId = rawCompanyId || '';
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Buyer>({ name: '', address: '', bankDetails: [{ bankName: '', accountNumber: '', ifscCode: '', accountHolderName: '' }] });
@@ -60,28 +66,27 @@ export default function BuyersPage() {
       return;
     }
     try {
-      // const method = editingId ? 'PUT' : 'POST';
-      // const url = editingId ? `${BUYERS_API_URL}/${editingId}` : BUYERS_API_URL;
-      // const res = await fetch(url, {
-      //   method,
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(form),
-      // });
-      // if (!res.ok) throw new Error('Failed to save buyer');
-      // fetchBuyers();
+      const { name, address, bankDetails } = form;
+      if (editingId) {
+        await updateBuyer({ id: editingId, name, address, bankDetails }).unwrap();
+      } else {
+        await addBuyer({ name, address, bankDetails }).unwrap();
+      }
       closeModal();
-    } catch {
-      setErrorMsg('Failed to save buyer.');
+    } catch (err: any) {
+      setErrorMsg(err?.data?.message || 'Failed to save buyer.');
     }
   };
 
-  const handleDelete = async (id?: string) => {
+  const handleDelete = async (id?: string | number) => {
     if (!id) return;
+    if (!window.confirm('Are you sure you want to delete this buyer?')) return;
     try {
-      // await fetch(`${BUYERS_API_URL}/${id}`, { method: 'DELETE' });
-      // fetchBuyers();
+      await deleteBuyer(id).unwrap();
       closeModal();
-    } catch {}
+    } catch (err: any) {
+      setErrorMsg(err?.data?.message || 'Failed to delete buyer.');
+    }
   };
 
   // Search filter

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGetSalesmenQuery } from '../../../store/api';
+import { useGetSalesmenQuery, useAddSalesmanMutation, useUpdateSalesmanMutation, useDeleteSalesmanMutation } from '../../../store/api';
 import { Salesman } from '../../../store/salesmenSlice';
 import { skipToken } from '@reduxjs/toolkit/query';
 import Cookies from 'js-cookie';
@@ -11,11 +11,14 @@ const SalesmenPage = () => {
   const companyId = rawCompanyId || '';
   const { data: salesmen = [], isLoading } = useGetSalesmenQuery(companyId ? { companyId } : skipToken);
   const [form, setForm] = useState({ name: '', phone: '', address: '', commissionRate: 0, companyId: '' });
+  const [addSalesman, { isLoading: isAdding }] = useAddSalesmanMutation();
+  const [updateSalesman, { isLoading: isUpdating }] = useUpdateSalesmanMutation();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
+  const [deleteSalesman, { isLoading: isDeleting }] = useDeleteSalesmanMutation();
 
   const openModal = (salesman?: Salesman) => {
     if (salesman) {
@@ -54,46 +57,48 @@ const SalesmenPage = () => {
     e.preventDefault();
     setErrorMsg('');
     setSuccess('');
-    if (!form.name || !form.phone || !form.address) {
-      setErrorMsg('All fields are required.');
+    if (!form.name || !form.phone) {
+      setErrorMsg('Name and phone are required.');
       return;
     }
     try {
-      // This part needs to be updated to use RTK Query mutations
-      // For now, keeping the original logic as per instructions
-      // In a real RTK Query setup, you'd use `useAddSalesmanMutation` and `useUpdateSalesmanMutation`
-      // and call them here.
-      // For example:
-      // if (editingId) {
-      //   await updateSalesman({ id: editingId, ...form }).unwrap();
-      //   setSuccess('Salesman updated successfully!');
-      // } else {
-      //   await addSalesman(form).unwrap();
-      //   setSuccess('Salesman added successfully!');
-      // }
-      // await dispatch(fetchSalesmen()); // This line is removed as per new_code
-      // setTimeout(() => setSuccess(''), 3000); // This line is removed as per new_code
+      if (editingId) {
+        await updateSalesman({
+          id: editingId,
+          name: form.name,
+          phone: form.phone,
+          address: form.address,
+          commissionRate: form.commissionRate,
+          companyId: companyId,
+        }).unwrap();
+        setSuccess('Salesman updated successfully!');
+      } else {
+        await addSalesman({
+          name: form.name,
+          phone: form.phone,
+          address: form.address,
+          commissionRate: form.commissionRate,
+          companyId: companyId,
+        }).unwrap();
+        setSuccess('Salesman added successfully!');
+      }
       setModalOpen(false);
-    } catch (err: unknown) {
-      setErrorMsg('Failed to save salesman.');
-      console.error(err);
+    } catch (err: any) {
+      setErrorMsg(err?.data?.message || 'Failed to save salesman.');
     }
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this salesman?')) return;
+    setErrorMsg('');
+    setSuccess('');
     try {
-      // This part needs to be updated to use RTK Query mutations
-      // For now, keeping the original logic as per instructions
-      // In a real RTK Query setup, you'd use `useDeleteSalesmanMutation`
-      // and call it here.
-      // await deleteSalesman(id).unwrap();
-      // await dispatch(fetchSalesmen()); // This line is removed as per new_code
+      await deleteSalesman(id).unwrap();
       setSuccess('Salesman deleted successfully!');
       setTimeout(() => setSuccess(''), 3000);
       closeModal();
-    } catch (err: unknown) {
-      setErrorMsg('Failed to delete salesman.');
-      console.error(err);
+    } catch (err: any) {
+      setErrorMsg(err?.data?.message || 'Failed to delete salesman.');
     }
   };
 

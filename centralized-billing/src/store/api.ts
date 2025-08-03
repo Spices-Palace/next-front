@@ -75,6 +75,52 @@ export const api = createApi({
       query: () => '/v1/buyers',
       providesTags: ['Buyer'],
     }),
+    addBuyer: builder.mutation<Buyer, Omit<Buyer, 'id'> >({
+      query: (body) => ({
+        url: '/v1/buyers',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Buyer'],
+    }),
+    updateBuyer: builder.mutation<Buyer, { id: string | number; name: string; address: string; bankDetails: Buyer['bankDetails'] }>({
+      query: ({ id, ...body }) => ({
+        url: `/v1/buyers/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Buyer'],
+    }),
+    deleteBuyer: builder.mutation<{ success: boolean }, string | number>({
+      query: (id) => ({
+        url: `/v1/buyers/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Buyer'],
+    }),
+    addSalesman: builder.mutation<Salesman, { name: string; phone: string; address?: string; commissionRate: number; companyId: string }>({
+      query: (body) => ({
+        url: '/v1/salesmen',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Salesman'],
+    }),
+    updateSalesman: builder.mutation<Salesman, { id: number; name: string; phone: string; address?: string; commissionRate: number; companyId: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/v1/salesmen/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Salesman'],
+    }),
+    deleteSalesman: builder.mutation<{ success: boolean }, number>({
+      query: (id) => ({
+        url: `/v1/salesmen/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Salesman'],
+    }),
     getDailySalesReport: builder.query<any, { companyId: string; date: string }>({
       query: ({ companyId, date }) => `/v1/bills/daily-sales-report?companyId=${companyId}&date=${date}`,
     }),
@@ -98,6 +144,12 @@ export const {
   useGetBillsQuery,
   useGetSalesmenQuery,
   useGetBuyersQuery,
+  useAddBuyerMutation,
+  useUpdateBuyerMutation,
+  useDeleteBuyerMutation,
+  useAddSalesmanMutation,
+  useUpdateSalesmanMutation,
+  useDeleteSalesmanMutation,
   useGetDailySalesReportQuery,
   useGetSalesmanCommissionReportQuery,
 } = api; 
