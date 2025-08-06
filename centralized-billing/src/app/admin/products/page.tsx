@@ -30,9 +30,36 @@ const PRODUCT_TYPES: { label: ProductType; unit: string[] }[] = [
 ];
 
 function generateBarcode(products: Product[]) {
-  // Get the next number (start from 1000) for all products
-  const nextNum = 1000 + products.length;
-  return `${nextNum}A`;
+  // Get all existing barcodes
+  const existingBarcodes = new Set(products.map(p => p.barcode));
+  
+  // Find the next available barcode starting from 1000A
+  let nextNum = 1000;
+  let barcode = `${nextNum}A`;
+  
+  // Keep incrementing until we find an unused barcode
+  while (existingBarcodes.has(barcode)) {
+    nextNum++;
+    barcode = `${nextNum}A`;
+  }
+  
+  return barcode;
+}
+
+// Function to find duplicate barcodes
+function findDuplicateBarcodes(products: Product[]) {
+  const barcodeCounts = new Map<string, Product[]>();
+  
+  products.forEach(product => {
+    if (!barcodeCounts.has(product.barcode)) {
+      barcodeCounts.set(product.barcode, []);
+    }
+    barcodeCounts.get(product.barcode)!.push(product);
+  });
+  
+  return Array.from(barcodeCounts.entries())
+    .filter(([barcode, products]) => products.length > 1)
+    .map(([barcode, products]) => ({ barcode, products }));
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nest-back-hfgh.onrender.com';
@@ -74,6 +101,10 @@ export default function ProductsPage() {
   const [companyName, setCompanyName] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [fixingDuplicates, setFixingDuplicates] = useState(false);
+  
+  // Check for duplicate barcodes
+  const duplicateBarcodes = findDuplicateBarcodes(products);
 
   // Update unit options when type changes
   const unitOptions = PRODUCT_TYPES.find(t => t.label === form.type)?.unit || ['pieces'];
@@ -147,16 +178,34 @@ export default function ProductsPage() {
       setError('Buyer not found for this product. Please select a valid buyer.');
       return;
     }
+    
+    // Validate barcode format if provided
+    if (form.barcode && !/^\d+A$/.test(form.barcode)) {
+      setError('Barcode must be in format: numbers followed by "A" (e.g., 1000A)');
+      return;
+    }
+    
+    // Check for duplicate barcode
+    const isDuplicateBarcode = products.some(p => 
+      p.barcode === form.barcode && p.id !== editingId
+    );
+    if (isDuplicateBarcode) {
+      setError('A product with this barcode already exists. Please use a different barcode.');
+      return;
+    }
+    
     let barcode = form.barcode;
     if (!editingId) {
-      // If barcode is not set (shouldn't happen), generate it
+      // For new products, use provided barcode or generate one
       if (!barcode) {
         barcode = generateBarcode(products);
       }
     } else {
-      // For updates, keep the existing barcode if available
-      const existingProduct = products.find(p => p.id === editingId);
-      barcode = existingProduct ? existingProduct.barcode : generateBarcode(products);
+      // For updates, use provided barcode or keep existing one
+      if (!barcode) {
+        const existingProduct = products.find(p => p.id === editingId);
+        barcode = existingProduct ? existingProduct.barcode : generateBarcode(products);
+      }
     }
     const payload = {
       name: form.name.trim(),
@@ -223,6 +272,48 @@ export default function ProductsPage() {
     setProductToDelete(null);
   };
 
+  const handleFixDuplicateBarcodes = async () => {
+    setFixingDuplicates(true);
+    try {
+      // Get all products that need new barcodes
+      const productsToUpdate = duplicateBarcodes.flatMap(({ products }) => 
+        products.slice(1) // Keep the first product with the original barcode, update the rest
+      );
+      
+      // Generate new barcodes for each duplicate
+      for (const product of productsToUpdate) {
+        const newBarcode = generateBarcode(products);
+        
+        // Update the product with new barcode
+        await updateProduct({
+          id: product.id,
+          name: product.name,
+          type: product.type,
+          unit: product.unit,
+          cost: product.cost,
+          price: product.price,
+          quantity: product.quantity,
+          barcode: newBarcode,
+          buyerId: product.buyerId,
+          companyId: product.companyId,
+        }).unwrap();
+        
+        // Update local products array to reflect the change
+        const updatedProducts = products.map(p => 
+          p.id === product.id ? { ...p, barcode: newBarcode } : p
+        );
+        // Note: The RTK Query cache will be automatically updated
+      }
+      
+      setSuccess('Duplicate barcodes fixed successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err?.data?.message || 'Failed to fix duplicate barcodes.');
+    } finally {
+      setFixingDuplicates(false);
+    }
+  };
+
   // Filtered products for search
   const filteredProducts = products.filter(
     p =>
@@ -275,6 +366,36 @@ export default function ProductsPage() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="text-green-700 font-semibold">{success}</div>
+          </div>
+        )}
+        {duplicateBarcodes.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-red-600 font-bold">⚠️ Duplicate Barcodes Detected</span>
+            </div>
+            <p className="text-red-700 text-sm mb-3">
+              The following barcodes are used by multiple products. Please fix these duplicates to avoid billing issues:
+            </p>
+            {duplicateBarcodes.map(({ barcode, products }) => (
+              <div key={barcode} className="mb-2 p-2 bg-red-100 rounded">
+                <div className="font-semibold text-red-800">Barcode: {barcode}</div>
+                <div className="text-sm text-red-700">
+                  Products: {products.map(p => p.name).join(', ')}
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={handleFixDuplicateBarcodes}
+              disabled={fixingDuplicates}
+              className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold transition disabled:opacity-50"
+            >
+              {fixingDuplicates ? 'Fixing...' : 'Fix Duplicate Barcodes'}
+            </button>
+          </div>
+        )}
       </div>
       {/* Table view only */}
       <div className="overflow-x-auto rounded-2xl shadow-lg border border-blue-100 bg-white p-12 mb-10 w-full">
@@ -438,6 +559,20 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-base font-medium text-gray-700 mb-2">Barcode</label>
+                <input
+                  className="border rounded px-4 py-3 w-full text-lg text-gray-900 placeholder-gray-400"
+                  value={form.barcode}
+                  onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
+                  placeholder="e.g. 1000A (auto-generated if empty)"
+                  pattern="[0-9]+A"
+                  title="Barcode must be in format: numbers followed by 'A' (e.g., 1000A)"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Format: numbers followed by 'A' (e.g., 1000A). Leave empty for auto-generation.
+                </p>
               </div>
               {error && <div className="text-red-600 text-base">{error}</div>}
               {success && <div className="text-green-600 text-base mb-2">{success}</div>}

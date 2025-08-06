@@ -804,7 +804,7 @@ export default function CashierBillingPage() {
           </div>
         </div>
       </div>
-      {/* Print-friendly bill layout (A4) */}
+      {/* Print-friendly bill layout (Full A4) */}
       {showPrint && (
         <div
           ref={printRef}
@@ -813,6 +813,7 @@ export default function CashierBillingPage() {
             top: 0,
             left: 0,
             width: "210mm",
+            height: "297mm",
             background: "white",
             zIndex: 9999,
             padding: "0",
@@ -822,80 +823,297 @@ export default function CashierBillingPage() {
         >
           <style>{`
             @media print {
-              @page { size: A4; margin: 0; }
-              body { background: white !important; margin: 0 !important; padding: 0 !important; }
-              * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+              @page { 
+                size: A4; 
+                margin: 0; 
+              }
+              body { 
+                background: white !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+              }
+              * { 
+                -webkit-print-color-adjust: exact !important; 
+                color-adjust: exact !important; 
+              }
             }
             .bill-page {
-              width: 100%;
+              width: 210mm;
+              height: 297mm;
               box-sizing: border-box;
-              padding: 32px 32px 24px 32px;
-              border: 2px solid #1e293b;
-              border-radius: 16px;
-              background: #f8fafc;
-              box-shadow: 0 0 12px 2px #cbd5e1;
-              margin-bottom: 24px;
+              padding: 15mm;
+              background: #faf9f6;
               display: flex;
               flex-direction: column;
-              justify-content: flex-start;
+              position: relative;
+              font-family: 'Georgia', serif;
             }
-            .bill-header { text-align: center; margin-bottom: 18px; }
-            .bill-title { font-size: 32px; font-weight: 800; color: #0f172a; margin: 0; }
-            .bill-subtitle { font-size: 18px; margin-top: 8px; color: #334155; }
-            .bill-gst { font-size: 16px; color: #334155; margin-top: 2px; margin-bottom: 8px; font-weight: 600; }
-            .bill-info { display: flex; justify-content: space-between; margin-bottom: 16px; color: #0f172a; font-size: 16px; }
-            .bill-customer { margin-bottom: 16px; color: #0f172a; font-size: 16px; }
-            .bill-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px #cbd5e1; }
-            .bill-table th, .bill-table td { padding: 10px 8px; border: 1.5px solid #64748b; color: #0f172a; font-size: 16px; background: #fff; }
-            .bill-table th { background: #e0e7ff; font-weight: 700; }
-            .bill-table td { font-weight: 500; }
-            .bill-total { text-align: right; font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 32px; border-top: 2px solid #0f172a; padding-top: 8px; }
-            .bill-footer { text-align: center; font-size: 18px; color: #0f172a; margin-top: 48px; }
+            .header-section {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              margin-bottom: 8mm;
+            }
+            .company-section {
+              display: flex;
+              align-items: center;
+              gap: 6mm;
+              margin-bottom: 6mm;
+            }
+            .silk-mark-logo {
+              width: 20mm;
+              height: 20mm;
+              background-image: url('/silkmark.jpg');
+              background-size: contain;
+              background-repeat: no-repeat;
+              background-position: center;
+              flex-shrink: 0;
+            }
+            .company-info {
+              text-align: center;
+            }
+            .company-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: #000;
+              font-family: 'Georgia', serif;
+              margin-bottom: 2mm;
+            }
+            .company-details {
+              font-size: 12px;
+              color: #000;
+              line-height: 1.4;
+            }
+            .billed-to-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 8mm;
+            }
+            .billed-to-left {
+              flex: 1;
+            }
+            .billed-to-title {
+              font-size: 11px;
+              font-weight: bold;
+              color: #000;
+              text-transform: uppercase;
+              margin-bottom: 3mm;
+              letter-spacing: 1.5px;
+              font-family: 'Arial', sans-serif;
+            }
+            .billed-to-content {
+              font-size: 13px;
+              color: #000;
+              line-height: 1.5;
+              font-family: 'Arial', sans-serif;
+            }
+            .invoice-details {
+              text-align: right;
+              font-size: 13px;
+              color: #000;
+              line-height: 1.5;
+              font-family: 'Arial', sans-serif;
+            }
+            .divider-line {
+              border-top: 1px solid #000;
+              margin: 6mm 0;
+            }
+            .products-section {
+              flex: 1;
+              margin-bottom: 8mm;
+            }
+            .bill-table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 14px;
+              color: #000;
+            }
+            .bill-table th {
+              background: transparent;
+              color: #000;
+              border: none;
+              padding: 3mm 2mm;
+              text-align: left;
+              font-weight: bold;
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 1.5px;
+              font-family: 'Arial', sans-serif;
+            }
+            .bill-table td {
+              border: none;
+              padding: 2mm 2mm;
+              text-align: left;
+              background: transparent;
+              font-size: 13px;
+              font-family: 'Arial', sans-serif;
+            }
+            .bill-table td:last-child {
+              text-align: right;
+            }
+            .bill-table th:last-child {
+              text-align: right;
+            }
+            .summary-section {
+              text-align: right;
+              margin-bottom: 8mm;
+            }
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 2mm;
+              font-size: 13px;
+              color: #000;
+              min-width: 200px;
+              font-family: 'Arial', sans-serif;
+            }
+            .summary-row.total {
+              font-weight: bold;
+              font-size: 16px;
+              border-top: 1px solid #000;
+              padding-top: 2mm;
+              margin-top: 2mm;
+              font-family: 'Arial', sans-serif;
+            }
+            .footer-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              margin-top: auto;
+            }
+            .thank-you {
+              font-size: 22px;
+              font-weight: normal;
+              color: #000;
+              font-family: 'Georgia', serif;
+            }
+            .payment-info {
+              text-align: left;
+              font-size: 11px;
+              color: #000;
+              font-family: 'Arial', sans-serif;
+            }
+            .payment-info-title {
+              font-weight: bold;
+              text-transform: uppercase;
+              letter-spacing: 1.5px;
+              margin-bottom: 2mm;
+              font-size: 10px;
+            }
+            .signature-section {
+              text-align: right;
+              font-size: 12px;
+              color: #000;
+              font-family: 'Arial', sans-serif;
+            }
+            .signature-name {
+              font-family: 'Brush Script MT', cursive;
+              font-size: 16px;
+              margin-bottom: 2mm;
+            }
+            .print:hidden { display: none !important; }
           `}</style>
-          {/* Only render the customer bill */}
-          <div className="bill-page">
-            <div className="bill-header">
-              <h2 className="bill-title">{companyName}</h2>
-              <div className="bill-subtitle">Tax Invoice</div>
-              <div className="bill-gst">GST No: <b>{companyGstNo}</b></div>
+          
+                    <div className="bill-page">
+            {/* Header Section */}
+            <div className="header-section">
+              <div className="company-section">
+                <div className="silk-mark-logo"></div>
+                <div className="company-info">
+                  <div className="company-name">{companyName}</div>
+                  <div className="company-details">
+                    <div>123 Main Street, City, State - 123456</div>
+                    <div>Phone: +91 98765 43210 | Email: info@{companyName.toLowerCase().replace(/\s+/g, '')}.com</div>
+                    <div>GST No: {companyGstNo} | PAN: ABCDE1234F</div>
+                    <div>Website: www.{companyName.toLowerCase().replace(/\s+/g, '')}.com</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="bill-info">
-              <div>Bill No: <b>{billNo}</b></div>
-              <div>Date: <b>{today}</b></div>
+            
+            {/* Billed To Section */}
+            <div className="billed-to-section">
+              <div className="billed-to-left">
+                <div className="billed-to-title">Billed To:</div>
+                <div className="billed-to-content">
+                  <div>{customer || 'Walk-in Customer'}</div>
+                </div>
+              </div>
+              <div className="invoice-details">
+                <div>Invoice No. {billNo}</div>
+                <div>{today}</div>
+              </div>
             </div>
-            <div className="bill-customer">Customer: <b>{customer || 'Walk-in Customer'}</b></div>
-            <table className="bill-table">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Barcode</th>
-                  <th>Price (₹)</th>
-                  <th>Qty</th>
-                  <th>CGST (₹)</th>
-                  <th>SGST (₹)</th>
-                  <th>Total (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => {
-                  const taxes = calculateTaxes(item.type, item.total);
-                  const basePrice = getBasePrice(item.type, item.price);
-                  return (
-                    <tr key={idx}>
-                      <td>{item.name}</td>
-                      <td style={{ fontFamily: 'monospace' }}>{item.modifiedBarcode || item.barcode}</td>
-                      <td>₹{basePrice}</td>
-                      <td>{item.quantity}</td>
-                      <td>₹{taxes.cgst}</td>
-                      <td>₹{taxes.sgst}</td>
-                      <td style={{ fontWeight: 700 }}>₹{item.total}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="bill-total">Grand Total: ₹{finalTotal}</div>
-            <div className="bill-footer">Thank you for your purchase!</div>
+            
+            <div className="divider-line"></div>
+            
+            {/* Products Section */}
+            <div className="products-section">
+              <table className="bill-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => {
+                    const basePrice = getBasePrice(item.type, item.price);
+                    return (
+                      <tr key={idx}>
+                        <td>{item.name}</td>
+                        <td>{item.quantity}</td>
+                        <td>₹{basePrice}</td>
+                        <td>₹{item.total}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="divider-line"></div>
+            
+            {/* Summary Section */}
+            <div className="summary-section">
+              <div className="summary-row">
+                <span>Subtotal</span>
+                <span>₹{grandTotal}</span>
+              </div>
+              {discount > 0 && (
+                <div className="summary-row">
+                  <span>Discount</span>
+                  <span>-₹{discount}</span>
+                </div>
+              )}
+              <div className="summary-row">
+                <span>Tax (0%)</span>
+                <span>₹0</span>
+              </div>
+              <div className="summary-row total">
+                <span>Total</span>
+                <span>₹{finalTotal}</span>
+              </div>
+            </div>
+            
+            {/* Footer Section */}
+            <div className="footer-section">
+              <div className="thank-you">Thank you!</div>
+              <div className="payment-info">
+                <div className="payment-info-title">Payment Information</div>
+                <div>Briard Bank</div>
+                <div>Account Name: {companyName}</div>
+                <div>Account No.: 123-456-7890</div>
+                <div>Pay by: {new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+              </div>
+              <div className="signature-section">
+                <div className="signature-name">{companyName}</div>
+                <div>123 Anywhere St., Any City, ST 12345</div>
+              </div>
+            </div>
           </div>
         </div>
       )}
