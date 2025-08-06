@@ -5,6 +5,7 @@ import Barcode from 'react-barcode';
 import Cookies from 'js-cookie';
 import { useGetProductsQuery, useGetBuyersQuery, useAddProductMutation, useUpdateProductMutation, useDeleteProductMutation } from '../../../store/api';
 import BarcodePrintModal from '../../components/BarcodePrintModal';
+import BulkBarcodePrintModal from '../../components/BulkBarcodePrintModal';
 import { skipToken } from '@reduxjs/toolkit/query';
 
 interface Product {
@@ -98,10 +99,13 @@ export default function ProductsPage() {
   const [printBarcodeModalOpen, setPrintBarcodeModalOpen] = useState(false);
   const [barcodeToPrint, setBarcodeToPrint] = useState<string | null>(null);
   const [quantityToPrint, setQuantityToPrint] = useState<number>(1);
+  const [productToPrint, setProductToPrint] = useState<Product | null>(null);
   const [companyName, setCompanyName] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [fixingDuplicates, setFixingDuplicates] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
+  const [bulkPrintModalOpen, setBulkPrintModalOpen] = useState(false);
   
   // Check for duplicate barcodes
   const duplicateBarcodes = findDuplicateBarcodes(products);
@@ -272,6 +276,36 @@ export default function ProductsPage() {
     setProductToDelete(null);
   };
 
+  const handlePrintProduct = (product: Product) => {
+    setProductToPrint(product);
+    setBarcodeToPrint(product.barcode);
+    setQuantityToPrint(product.quantity || 1);
+    setPrintBarcodeModalOpen(true);
+  };
+
+  const handleSelectProduct = (productId: number) => {
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.size === filteredProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const handleBulkPrint = () => {
+    if (selectedProducts.size === 0) return;
+    setBulkPrintModalOpen(true);
+  };
+
   const handleFixDuplicateBarcodes = async () => {
     setFixingDuplicates(true);
     try {
@@ -353,12 +387,22 @@ export default function ProductsPage() {
       <div className="mb-6 flex flex-col gap-4 w-full">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-extrabold text-blue-700 tracking-tight">Products</h1>
-          <button
-            onClick={() => openModal()}
-            className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-5 py-2 rounded-lg shadow hover:from-blue-600 hover:to-blue-800 font-semibold text-lg transition"
-          >
-            + Add Product
-          </button>
+          <div className="flex gap-3">
+            {selectedProducts.size > 0 && (
+              <button
+                onClick={handleBulkPrint}
+                className="bg-gradient-to-r from-green-500 to-green-700 text-white px-5 py-2 rounded-lg shadow hover:from-green-600 hover:to-green-800 font-semibold text-lg transition"
+              >
+                Print Selected ({selectedProducts.size})
+              </button>
+            )}
+            <button
+              onClick={() => openModal()}
+              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-5 py-2 rounded-lg shadow hover:from-blue-600 hover:to-blue-800 font-semibold text-lg transition"
+            >
+              + Add Product
+            </button>
+          </div>
         </div>
         <input
           className="w-full border rounded px-4 py-3 text-lg text-gray-900 placeholder-gray-400"
@@ -402,6 +446,14 @@ export default function ProductsPage() {
         <table className="min-w-full text-base text-left">
           <thead className="bg-blue-100">
             <tr>
+              <th className="px-5 py-3 text-gray-800 font-bold text-lg">
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
+                  onChange={handleSelectAll}
+                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </th>
               <th className="px-5 py-3 text-gray-800 font-bold text-lg">Barcode</th>
               <th className="px-5 py-3 text-gray-800 font-bold text-lg">Name</th>
               <th className="px-5 py-3 text-gray-800 font-bold text-lg">Buyer</th>
@@ -416,11 +468,19 @@ export default function ProductsPage() {
           <tbody>
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-400 text-lg">No products found.</td>
+                <td colSpan={10} className="text-center py-8 text-gray-400 text-lg">No products found.</td>
               </tr>
             ) : (
               filteredProducts.map(product => (
                 <tr key={product.id} className="border-t hover:bg-blue-50 transition">
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.has(product.id)}
+                      onChange={() => handleSelectProduct(product.id)}
+                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex flex-col items-center">
                       <Barcode value={product.barcode} width={2} height={40} fontSize={14} displayValue={false} format="CODE128" />
@@ -441,6 +501,13 @@ export default function ProductsPage() {
                       title="Edit"
                     >
                       <span className="material-icons">edit</span>
+                    </button>
+                    <button
+                      className="text-green-600 hover:text-green-800 font-bold mr-2 text-xl"
+                      onClick={() => handlePrintProduct(product)}
+                      title="Print Barcode"
+                    >
+                      <span className="material-icons">print</span>
                     </button>
                     <button
                       className="text-red-600 hover:text-red-800 font-bold text-xl"
@@ -624,11 +691,25 @@ export default function ProductsPage() {
       {/* Print Barcode Modal */}
       <BarcodePrintModal
         barcodeToPrint={barcodeToPrint || ''}
-        price={form.price}
+        price={productToPrint ? String(productToPrint.price) : form.price}
         companyName={companyName}
         quantity={quantityToPrint}
         open={printBarcodeModalOpen}
-        onClose={() => setPrintBarcodeModalOpen(false)}
+        onClose={() => {
+          setPrintBarcodeModalOpen(false);
+          setProductToPrint(null);
+        }}
+      />
+
+      {/* Bulk Print Barcode Modal */}
+      <BulkBarcodePrintModal
+        products={filteredProducts.filter(p => selectedProducts.has(p.id))}
+        companyName={companyName}
+        open={bulkPrintModalOpen}
+        onClose={() => {
+          setBulkPrintModalOpen(false);
+          setSelectedProducts(new Set());
+        }}
       />
 
       {/* Delete Confirmation Modal */}
